@@ -146,3 +146,39 @@ HL_API bool hl_thread_set_context( hl_thread *t, hl_thread_registers *regs ) {
 	return false;
 #	endif
 }
+
+HL_PRIM hl_lock* hl_lock_alloc()
+{
+  hl_lock* l = (hl_lock*)hl_gc_alloc_raw(sizeof(hl_lock));
+  l->locked = false;
+  l->semaphore = CreateEventEx(NULL, NULL, 0, EVENT_ALL_ACCESS); // Really not sure it should be all_access
+  return l;
+}
+
+HL_PRIM bool hl_lock_wait(hl_lock* l, double timeout)
+{
+#ifdef HL_WIN
+  if (l->locked) return false;
+  l->locked = true;
+  bool result = WaitForSingleObjectEx(l->semaphore, timeout*1000.0,false) != WAIT_TIMEOUT;
+  l->locked = false;
+  return result;
+#else
+  return false;
+#endif
+}
+
+HL_PRIM void hl_lock_release(hl_lock* l)
+{
+#ifdef HL_WIN
+  if (l->locked)
+  {
+    SetEvent(l->semaphore);
+  }
+#endif
+}
+
+#define _LOCK _ABSTRACT(hl_lock)
+DEFINE_PRIM(_LOCK, lock_alloc, _NO_ARG);
+DEFINE_PRIM(_BOOL, lock_wait, _LOCK _F64);
+DEFINE_PRIM(_VOID, lock_release, _LOCK);

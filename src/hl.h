@@ -494,6 +494,19 @@ HL_API int hl_thread_context_index( const char *name );
 HL_API bool hl_thread_get_context( hl_thread *t, hl_thread_registers *regs );
 HL_API bool hl_thread_set_context( hl_thread *t, hl_thread_registers *regs );
 
+// ----------------------- LOCK --------------------------------------------------
+
+
+struct _hl_lock {
+  bool locked;
+  HANDLE semaphore;
+};
+typedef struct _hl_lock hl_lock;
+
+HL_API hl_lock* hl_lock_alloc();
+HL_API bool hl_lock_wait(hl_lock* l, double timeout);
+HL_API void hl_lock_release(hl_lock* l);
+
 // ----------------------- ALLOC --------------------------------------------------
 
 #define MEM_HAS_PTR(kind)	(!((kind)&2))
