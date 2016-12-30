@@ -499,6 +499,7 @@ HL_API bool hl_thread_set_context( hl_thread *t, hl_thread_registers *regs );
 struct _hl_lock {
   bool locked;
   HANDLE semaphore;
+  void(*finalize)(hl_deque*);
 };
 typedef struct _hl_lock hl_lock;
 
@@ -511,6 +512,7 @@ HL_API void hl_lock_release(hl_lock* l);
 struct _hl_mutex
 {
   CRITICAL_SECTION cs;
+  void(*finalize)(hl_deque*);
 };
 typedef struct _hl_mutex hl_mutex;
 
@@ -521,7 +523,27 @@ HL_API void hl_mutex_release(hl_mutex* m);
 
 // ----------------------- DEQUE --------------------------------------------------
 
+struct _hl_queue
+{
+  vdynamic* msg;
+  hl_queue* next;
+};
+typedef struct _hl_queue hl_queue;
 
+struct _hl_deque
+{
+  hl_queue* first;
+  hl_queue* last;
+#ifdef HL_WIN
+  CRITICAL_SECTION lock;
+  HANDLE wait;
+#else
+  pthread_mutex_t lock;
+  pthread_cond_t wait;
+#endif
+  void (*finalize)(hl_deque*);
+};
+typedef struct _hl_deque hl_deque;
 
 // ----------------------- ALLOC --------------------------------------------------
 
