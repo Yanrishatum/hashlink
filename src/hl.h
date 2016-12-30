@@ -496,7 +496,6 @@ HL_API bool hl_thread_set_context( hl_thread *t, hl_thread_registers *regs );
 
 // ----------------------- LOCK --------------------------------------------------
 
-
 struct _hl_lock {
   bool locked;
   HANDLE semaphore;
@@ -506,6 +505,23 @@ typedef struct _hl_lock hl_lock;
 HL_API hl_lock* hl_lock_alloc();
 HL_API bool hl_lock_wait(hl_lock* l, double timeout);
 HL_API void hl_lock_release(hl_lock* l);
+
+// ----------------------- MUTEX --------------------------------------------------
+
+struct _hl_mutex
+{
+  CRITICAL_SECTION cs;
+};
+typedef struct _hl_mutex hl_mutex;
+
+HL_API hl_mutex* hl_mutex_alloc();
+HL_API void hl_mutex_acquire(hl_mutex* m);
+HL_API bool hl_mutex_try_acquire(hl_mutex* m);
+HL_API void hl_mutex_release(hl_mutex* m);
+
+// ----------------------- DEQUE --------------------------------------------------
+
+
 
 // ----------------------- ALLOC --------------------------------------------------
 

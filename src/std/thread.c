@@ -147,12 +147,19 @@ HL_API bool hl_thread_set_context( hl_thread *t, hl_thread_registers *regs ) {
 #	endif
 }
 
+// Lock
+
 HL_PRIM hl_lock* hl_lock_alloc()
 {
+#ifdef HL_WIN
   hl_lock* l = (hl_lock*)hl_gc_alloc_raw(sizeof(hl_lock));
   l->locked = false;
-  l->semaphore = CreateEventEx(NULL, NULL, 0, EVENT_ALL_ACCESS); // Really not sure it should be all_access
+  l->semaphore = CreateSemaphore(NULL, 0, (1 << 30), NULL);
+  // TODO: Error handling
   return l;
+#else
+  hl_error("Lock not available on this platform");
+#endif
 }
 
 HL_PRIM bool hl_lock_wait(hl_lock* l, double timeout)
@@ -160,9 +167,20 @@ HL_PRIM bool hl_lock_wait(hl_lock* l, double timeout)
 #ifdef HL_WIN
   if (l->locked) return false;
   l->locked = true;
-  bool result = WaitForSingleObjectEx(l->semaphore, timeout*1000.0,false) != WAIT_TIMEOUT;
-  l->locked = false;
-  return result;
+  switch (WaitForSingleObjectEx(l->semaphore, (timeout == -1 ? INFINITE : timeout*1000.0), false) != WAIT_TIMEOUT)
+  {
+  case WAIT_ABANDONED:
+  case WAIT_OBJECT_0:
+    l->locked = false;
+    return true;
+  case WAIT_TIMEOUT:
+    l->locked = false;
+    return false;
+  default:
+    // TODO: Error
+    l->locked = false;
+    return false;
+  }
 #else
   return false;
 #endif
@@ -173,8 +191,48 @@ HL_PRIM void hl_lock_release(hl_lock* l)
 #ifdef HL_WIN
   if (l->locked)
   {
-    SetEvent(l->semaphore);
+    ReleaseSemaphore(l->semaphore, 1, NULL);
   }
+#endif
+}
+
+// Mutex
+
+HL_PRIM hl_mutex* hl_mutex_alloc()
+{
+#ifdef HL_WIN
+  hl_mutex* m = (hl_mutex*)hl_gc_alloc_raw(sizeof(hl_mutex));
+  InitializeCriticalSection(&m->cs);
+  return m;
+#else
+  hl_error("Mutex not supported on this platform");
+#endif
+}
+
+HL_PRIM void hl_mutex_acquire(hl_mutex* m)
+{
+#ifdef HL_WIN
+  EnterCriticalSection(&m->cs);
+#else
+  hl_error("Mutex not supported on this platform");
+#endif
+}
+
+HL_PRIM bool hl_mutex_try_acquire(hl_mutex* m)
+{
+#ifdef HL_WIN
+  return TryEnterCriticalSection(&m->cs);
+#else
+  hl_error("Mutex not supported on this platform");
+#endif
+}
+
+HL_PRIM void hl_mutex_release(hl_mutex* m)
+{
+#ifdef HL_WIN
+  LeaveCriticalSection(&m->cs);
+#else
+  hl_error("Mutex not supported on this platform");
 #endif
 }
 
@@ -182,3 +240,9 @@ HL_PRIM void hl_lock_release(hl_lock* l)
 DEFINE_PRIM(_LOCK, lock_alloc, _NO_ARG);
 DEFINE_PRIM(_BOOL, lock_wait, _LOCK _F64);
 DEFINE_PRIM(_VOID, lock_release, _LOCK);
+
+#define _MUTEX _ABSTRACT(hl_mutex)
+DEFINE_PRIM(_MUTEX, mutex_alloc, _NO_ARG);
+DEFINE_PRIM(_VOID, mutex_acquire, _MUTEX);
+DEFINE_PRIM(_BOOL, mutex_try_acquire, _MUTEX);
+DEFINE_PRIM(_VOID, mutex_release, _MUTEX);
