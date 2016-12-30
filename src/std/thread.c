@@ -149,6 +149,15 @@ HL_API bool hl_thread_set_context( hl_thread *t, hl_thread_registers *regs ) {
 
 // Lock
 
+static void lock_finalize(hl_lock* l)
+{
+#ifdef HL_WIN
+  CloseHandle(l->semaphore);
+#else
+
+#endif
+}
+
 HL_PRIM hl_lock* hl_lock_alloc()
 {
   hl_lock* l = (hl_lock*)hl_gc_alloc_finalizer(sizeof(hl_lock));
@@ -197,16 +206,16 @@ HL_PRIM void hl_lock_release(hl_lock* l)
 #endif
 }
 
-static void lock_finalize(hl_lock* l)
+// Mutex
+
+static void mutex_finalize(hl_mutex* m)
 {
 #ifdef HL_WIN
-  CloseHandle(l->semaphore);
+  DeleteCriticalSection(&m->cs);
 #else
 
 #endif
 }
-
-// Mutex
 
 HL_PRIM hl_mutex* hl_mutex_alloc()
 {
@@ -247,15 +256,6 @@ HL_PRIM void hl_mutex_release(hl_mutex* m)
 #endif
 }
 
-static void mutex_finalize(hl_mutex* m)
-{
-#ifdef HL_WIN
-  DeleteCriticalSection(&m->cs);
-#else
-
-#endif
-}
-
 // Deque
 
 #ifdef HL_WIN
@@ -267,6 +267,16 @@ static void mutex_finalize(hl_mutex* m)
 #define DEQUE_UNLOCK(l) pthread_mutex_unlock(&(l))
 #define DEQUE_SIGNAL(l) pthread_cond_signal(&(l))
 #endif
+
+static void deque_finalize(hl_deque* d)
+{
+#ifdef HL_WIN
+  DeleteCriticalSection(&d->lock);
+  CloseHandle(d->wait);
+#else
+
+#endif
+}
 
 HL_PRIM hl_deque* hl_deque_alloc()
 {
@@ -337,16 +347,6 @@ HL_PRIM vdynamic* hl_deque_pop(hl_deque* d, bool block)
   
   DEQUE_UNLOCK(d->lock);
   return msg;
-}
-
-static void deque_finalize(hl_deque* d)
-{
-#ifdef HL_WIN
-  DeleteCriticalSection(&d->lock);
-  CloseHandle(d->wait);
-#else
-
-#endif
 }
 
 #define _LOCK _ABSTRACT(hl_lock)

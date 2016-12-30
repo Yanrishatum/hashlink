@@ -496,12 +496,12 @@ HL_API bool hl_thread_set_context( hl_thread *t, hl_thread_registers *regs );
 
 // ----------------------- LOCK --------------------------------------------------
 
+typedef struct _hl_lock hl_lock;
 struct _hl_lock {
   bool locked;
   HANDLE semaphore;
-  void(*finalize)(hl_deque*);
+  void (*finalize)( hl_lock * );
 };
-typedef struct _hl_lock hl_lock;
 
 HL_API hl_lock* hl_lock_alloc();
 HL_API bool hl_lock_wait(hl_lock* l, double timeout);
@@ -509,12 +509,12 @@ HL_API void hl_lock_release(hl_lock* l);
 
 // ----------------------- MUTEX --------------------------------------------------
 
+typedef struct _hl_mutex hl_mutex;
 struct _hl_mutex
 {
   CRITICAL_SECTION cs;
-  void(*finalize)(hl_deque*);
+  void (*finalize)( hl_mutex * );
 };
-typedef struct _hl_mutex hl_mutex;
 
 HL_API hl_mutex* hl_mutex_alloc();
 HL_API void hl_mutex_acquire(hl_mutex* m);
@@ -523,13 +523,14 @@ HL_API void hl_mutex_release(hl_mutex* m);
 
 // ----------------------- DEQUE --------------------------------------------------
 
+typedef struct _hl_queue hl_queue;
 struct _hl_queue
 {
   vdynamic* msg;
   hl_queue* next;
 };
-typedef struct _hl_queue hl_queue;
 
+typedef struct _hl_deque hl_deque;
 struct _hl_deque
 {
   hl_queue* first;
@@ -541,9 +542,8 @@ struct _hl_deque
   pthread_mutex_t lock;
   pthread_cond_t wait;
 #endif
-  void (*finalize)(hl_deque*);
+  void (*finalize)( hl_deque * );
 };
-typedef struct _hl_deque hl_deque;
 
 // ----------------------- ALLOC --------------------------------------------------
 
